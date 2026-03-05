@@ -1,0 +1,118 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: techconnect_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: techconnect
+      MYSQL_USER: techconnect
+      MYSQL_PASSWORD: techconnect_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - techconnect_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Laravel Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: techconnect_backend
+    restart: unless-stopped
+    environment:
+      APP_NAME: TechConnect
+      APP_ENV: local
+      APP_KEY: base64:dGhlY29ubmVjdGtleWZvcmRldmVsb3BtZW50MTIzNDU2Nzg=
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: techconnect
+      DB_USERNAME: techconnect
+      DB_PASSWORD: techconnect_pass
+      FRONTEND_URL: http://localhost:3000
+      STRIPE_KEY: ${STRIPE_KEY:-}
+      STRIPE_SECRET: ${STRIPE_SECRET:-}
+      GOOGLE_MAPS_KEY: ${GOOGLE_MAPS_KEY:-}
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailhog
+      MAIL_PORT: 1025
+      MAIL_USERNAME: ""
+      MAIL_PASSWORD: ""
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/var/www/html
+      - backend_storage:/var/www/html/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - techconnect_network
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: techconnect_frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api
+      NEXT_PUBLIC_STRIPE_KEY: ${STRIPE_KEY:-}
+      NEXT_PUBLIC_GOOGLE_MAPS_KEY: ${GOOGLE_MAPS_KEY:-}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - techconnect_network
+
+  # Mailhog for development
+  mailhog:
+    image: mailhog/mailhog
+    container_name: techconnect_mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - techconnect_network
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: techconnect_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - techconnect_network
+
+volumes:
+  mysql_data:
+  backend_storage:
+
+networks:
+  techconnect_network:
+    driver: bridge
