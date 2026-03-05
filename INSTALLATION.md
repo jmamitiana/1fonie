@@ -19,6 +19,7 @@ A comprehensive platform connecting companies with local service providers for t
 - Laravel 11
 - MySQL 8.0
 - PHP 8.2
+- Composer
 - Stripe SDK
 
 ### Frontend
@@ -27,14 +28,15 @@ A comprehensive platform connecting companies with local service providers for t
 - TypeScript
 - Tailwind CSS 4
 - Zustand (State Management)
-
-### Infrastructure
-- Docker & Docker Compose
-- Nginx
+- Bun (Package Manager)
 
 ## Prerequisites
 
-- Docker and Docker Compose
+- PHP 8.2+
+- Composer
+- MySQL 8.0+ (ou SQLite pour le développement)
+- Node.js 18+
+- Bun
 - Git
 - (Optional) Stripe Account
 - (Optional) Google Maps API Key
@@ -58,49 +60,61 @@ cp backend/.env.example backend/.env
 
 # Update these values in backend/.env:
 DB_CONNECTION=mysql
-DB_HOST=mysql
+DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=techconnect
-DB_USERNAME=techconnect
-DB_PASSWORD=techconnect_pass
+DB_USERNAME=your_mysql_username
+DB_PASSWORD=your_mysql_password
 ```
 
-### 3. Start Docker Containers
+### 3. Install Backend Dependencies
 
 ```bash
-docker-compose up -d
+cd backend
+composer install
 ```
 
-This will start:
-- MySQL database on port 3306
-- Laravel backend API on port 8000
-- Next.js frontend on port 3000
-- Mailhog on ports 1025/8025
-- Nginx reverse proxy on port 80
-
-### 4. Install Backend Dependencies
+### 4. Generate Application Key
 
 ```bash
-docker-compose exec backend composer install
+php artisan key:generate
 ```
 
 ### 5. Run Migrations
 
 ```bash
-docker-compose exec backend php artisan migrate
+php artisan migrate
 ```
 
 ### 6. Seed the Database (Optional)
 
 ```bash
-docker-compose exec backend php artisan db:seed
+php artisan db:seed
 ```
 
-### 7. Access the Application
+### 7. Install Frontend Dependencies
+
+```bash
+cd ../frontend
+bun install
+```
+
+### 8. Start Development Servers
+
+```bash
+# Terminal 1 - Backend (port 8000)
+cd backend
+php artisan serve
+
+# Terminal 2 - Frontend (port 3000)
+cd frontend
+bun dev
+```
+
+### 9. Access the Application
 
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8000/api
-- Mailhog: http://localhost:8025
 
 ## Default Admin Account
 
@@ -177,13 +191,23 @@ NEXT_PUBLIC_GOOGLE_MAPS_KEY=your_api_key
 ### Running Tests
 
 ```bash
-docker-compose exec backend php artisan test
+cd backend
+php artisan test
 ```
 
-### Building for Production
+### Running Backend Commands
 
 ```bash
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml build
+# Clear cache
+php artisan cache:clear
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+
+# Rebuild cache
+php artisan optimize:clear
+php artisan config:cache
+php artisan route:cache
 ```
 
 ## Project Structure
@@ -206,7 +230,7 @@ techconnect/
 │   │   ├── services/     # API services
 │   │   └── types/        # TypeScript types
 │   └── public/           # Static assets
-└── docker-compose.yml    # Docker configuration
+└── src/                   # Root Next.js app (template)
 ```
 
 ## License
